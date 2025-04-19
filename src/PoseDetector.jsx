@@ -1,17 +1,22 @@
+// PoseDetector.jsx
+
 import React, { useEffect, useRef, useState } from "react";
 import {
   PoseLandmarker,
   FilesetResolver,
   DrawingUtils
 } from "@mediapipe/tasks-vision";
-import FeedbackMessage from "./FeedbackMessage"; // Import FeedbackMessage
+import FeedbackMessage from "./FeedbackMessage";
+import { calculateAngle, checkSquatAngle, checkPushupAngle } from "./poseUtils";
 
 export default function PoseDetector({ exercise }) {
   const videoRef = useRef();
   const canvasRef = useRef();
   const landmarkerRef = useRef();
   const rafId = useRef();
-  const [feedbackMessage, setFeedbackMessage] = useState(""); // State for feedback message
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [angles, setAngles] = useState({});
+  const [landmarks, setLandmarks] = useState([]);
 
   useEffect(() => {
     let running = true;
@@ -51,22 +56,35 @@ export default function PoseDetector({ exercise }) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
           if (result.landmarks && result.landmarks.length > 0) {
-            drawingUtils.drawLandmarks(result.landmarks[0], {
+            const landmarks = result.landmarks[0];
+            setLandmarks(landmarks);
+
+            drawingUtils.drawLandmarks(landmarks, {
               color: "lime",
               lineWidth: 2
             });
-            drawingUtils.drawConnectors(result.landmarks[0], PoseLandmarker.POSE_CONNECTIONS, {
+            drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
               color: "white",
               lineWidth: 2
             });
 
-            // Add logic for squat/push-up detection
+            const hip = landmarks[23]; // Left hip
+            const knee = landmarks[25]; // Left knee
+            const ankle = landmarks[27]; // Left ankle
+
+            const angle = calculateAngle(hip, knee, ankle);
+
+            setAngles((prevAngles) => ({
+              ...prevAngles,
+              leftLegAngle: angle,
+            }));
+
             if (exercise === "squat") {
-              // Placeholder logic for squat detection
-              setFeedbackMessage("Squat Detected");
+              const feedback = checkSquatAngle(angle);
+              setFeedbackMessage(feedback);
             } else if (exercise === "pushup") {
-              // Placeholder logic for push-up detection
-              setFeedbackMessage("Push-up Detected");
+              const feedback = checkPushupAngle(angle);
+              setFeedbackMessage(feedback);
             }
           }
         });
@@ -81,7 +99,7 @@ export default function PoseDetector({ exercise }) {
       running = false;
       cancelAnimationFrame(rafId.current);
       if (videoRef.current?.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
       }
     };
   }, [exercise]);
@@ -101,7 +119,24 @@ export default function PoseDetector({ exercise }) {
         width={640}
         height={480}
       />
-      {/* Show the feedback message */}
+      {/* Display the angle */}
+      {angles.leftLegAngle && (
+        <div
+          style={{
+            position: "absolute",
+            top: "20px",
+            left: "50%",
+            color: angles.leftLegAngle < 80 || angles.leftLegAngle > 140 ? "red" : "lime",
+            fontSize: "18px",
+            transform: "translateX(-50%)",
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            padding: "5px",
+            borderRadius: "5px",
+          }}
+        >
+          {`Left Leg Angle: ${angles.leftLegAngle.toFixed(2)}°`}
+        </div>
+      )}
       <FeedbackMessage message={feedbackMessage} />
     </div>
   );
