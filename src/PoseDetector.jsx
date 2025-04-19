@@ -1,4 +1,4 @@
-// PoseDetector.jsx
+//FeedbackMessage.jsx
 
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -7,7 +7,13 @@ import {
   DrawingUtils
 } from "@mediapipe/tasks-vision";
 import FeedbackMessage from "./FeedbackMessage";
-import { calculateAngle, checkSquatAngle, checkPushupAngle } from "./poseUtils";
+import {
+  calculateAngle,
+  checkSquatAngle,
+  checkPushupAngle,
+  checkBodyAngle,
+  checkHipAngle
+} from "./poseUtils";
 
 export default function PoseDetector({ exercise }) {
   const videoRef = useRef();
@@ -52,42 +58,66 @@ export default function PoseDetector({ exercise }) {
       const detectPose = () => {
         if (!running || !landmarkerRef.current) return;
 
-        landmarkerRef.current.detectForVideo(video, performance.now(), (result) => {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        landmarkerRef.current.detectForVideo(
+          video,
+          performance.now(),
+          (result) => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-          if (result.landmarks && result.landmarks.length > 0) {
-            const landmarks = result.landmarks[0];
-            setLandmarks(landmarks);
+            if (result.landmarks && result.landmarks.length > 0) {
+              const landmarks = result.landmarks[0];
+              setLandmarks(landmarks);
 
-            drawingUtils.drawLandmarks(landmarks, {
-              color: "lime",
-              lineWidth: 2
-            });
-            drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
-              color: "white",
-              lineWidth: 2
-            });
+              drawingUtils.drawLandmarks(landmarks, {
+                color: "lime",
+                lineWidth: 2
+              });
+              drawingUtils.drawConnectors(
+                landmarks,
+                PoseLandmarker.POSE_CONNECTIONS,
+                {
+                  color: "white",
+                  lineWidth: 2
+                }
+              );
 
-            const hip = landmarks[23]; // Left hip
-            const knee = landmarks[25]; // Left knee
-            const ankle = landmarks[27]; // Left ankle
+              const shoulder = landmarks[11]; // Left shoulder
+              const elbow = landmarks[13]; // Left elbow
+              const wrist = landmarks[15]; // Left wrist
+              const hip = landmarks[23]; // Left hip
+              const knee = landmarks[25]; // Left knee
+              const ankle = landmarks[27]; // Left ankle
 
-            const angle = calculateAngle(hip, knee, ankle);
+              if (exercise === "pushup") {
+                const elbowAngle = calculateAngle(shoulder, elbow, wrist);
+                const bodyAngle = calculateAngle(shoulder, hip, knee);
+                const hipAngle = calculateAngle(shoulder, hip, knee);
 
-            setAngles((prevAngles) => ({
-              ...prevAngles,
-              leftLegAngle: angle,
-            }));
+                setAngles({
+                  elbowAngle,
+                  bodyAngle,
+                  hipAngle
+                });
 
-            if (exercise === "squat") {
-              const feedback = checkSquatAngle(angle);
-              setFeedbackMessage(feedback);
-            } else if (exercise === "pushup") {
-              const feedback = checkPushupAngle(angle);
-              setFeedbackMessage(feedback);
+                const elbowFeedback = checkPushupAngle(elbowAngle);
+                const bodyFeedback = checkBodyAngle(bodyAngle);
+                const hipFeedback = checkHipAngle(hipAngle);
+
+                setFeedbackMessage(
+                  `${elbowFeedback} ${bodyFeedback} ${hipFeedback}`
+                );
+              } else if (exercise === "squat") {
+                const squatAngle = calculateAngle(hip, knee, ankle);
+                setAngles({
+                  squatAngle
+                });
+
+                const feedback = checkSquatAngle(squatAngle);
+                setFeedbackMessage(feedback);
+              }
             }
           }
-        });
+        );
 
         rafId.current = requestAnimationFrame(detectPose);
       };
@@ -119,24 +149,93 @@ export default function PoseDetector({ exercise }) {
         width={640}
         height={480}
       />
-      {/* Display the angle */}
-      {angles.leftLegAngle && (
+
+      {/* Push-up angle values */}
+      {exercise === "pushup" && angles.elbowAngle && (
         <div
           style={{
             position: "absolute",
             top: "20px",
             left: "50%",
-            color: angles.leftLegAngle < 80 || angles.leftLegAngle > 140 ? "red" : "lime",
+            color:
+              angles.elbowAngle < 45 || angles.elbowAngle > 90
+                ? "red"
+                : "lime",
             fontSize: "18px",
             transform: "translateX(-50%)",
             backgroundColor: "rgba(0, 0, 0, 0.6)",
             padding: "5px",
-            borderRadius: "5px",
+            borderRadius: "5px"
           }}
         >
-          {`Left Leg Angle: ${angles.leftLegAngle.toFixed(2)}°`}
+          {`Elbow Angle: ${angles.elbowAngle.toFixed(2)}°`}
         </div>
       )}
+
+      {exercise === "pushup" && angles.bodyAngle && (
+        <div
+          style={{
+            position: "absolute",
+            top: "50px",
+            left: "50%",
+            color:
+              angles.bodyAngle < 170 || angles.bodyAngle > 180
+                ? "red"
+                : "lime",
+            fontSize: "18px",
+            transform: "translateX(-50%)",
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            padding: "5px",
+            borderRadius: "5px"
+          }}
+        >
+          {`Body Angle: ${angles.bodyAngle.toFixed(2)}°`}
+        </div>
+      )}
+
+      {exercise === "pushup" && angles.hipAngle && (
+        <div
+          style={{
+            position: "absolute",
+            top: "80px",
+            left: "50%",
+            color:
+              angles.hipAngle < 145 || angles.hipAngle > 180
+                ? "red"
+                : "lime",
+            fontSize: "18px",
+            transform: "translateX(-50%)",
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            padding: "5px",
+            borderRadius: "5px"
+          }}
+        >
+          {`Hip Angle: ${angles.hipAngle.toFixed(2)}°`}
+        </div>
+      )}
+
+      {/* Squat angle value */}
+      {exercise === "squat" && angles.squatAngle && (
+        <div
+          style={{
+            position: "absolute",
+            top: "20px",
+            left: "50%",
+            color:
+              angles.squatAngle < 80 || angles.squatAngle > 140
+                ? "red"
+                : "lime",
+            fontSize: "18px",
+            transform: "translateX(-50%)",
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            padding: "5px",
+            borderRadius: "5px"
+          }}
+        >
+          {`Left Knee Angle: ${angles.squatAngle.toFixed(2)}°`}
+        </div>
+      )}
+
       <FeedbackMessage message={feedbackMessage} />
     </div>
   );

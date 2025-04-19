@@ -1,23 +1,11 @@
+//FeedbackMessage.jsx
+
 import React from "react";
 
-const FeedbackMessage = ({ message }) => {
+export default function FeedbackMessage({ message }) {
   return (
-    <div
-      style={{
-        position: "absolute",
-        bottom: "10px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        backgroundColor: "rgba(0, 0, 0, 0.7)",
-        color: "white",
-        padding: "10px 20px",
-        borderRadius: "10px",
-        fontSize: "18px",
-      }}
-    >
+    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-60 text-white px-4 py-2 rounded-lg text-center text-sm sm:text-base max-w-xs z-20">
       {message}
     </div>
   );
-};
-
-export default FeedbackMessage;
+}
