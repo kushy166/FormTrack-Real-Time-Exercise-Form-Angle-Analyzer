@@ -1,4 +1,4 @@
-//FeedbackMessage.jsx
+//PoseDetector.jsx
 
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -7,6 +7,7 @@ import {
   DrawingUtils
 } from "@mediapipe/tasks-vision";
 import FeedbackMessage from "./FeedbackMessage";
+ import { detectSquatPhases, extractLandmarks } from "./detectSquatPhase";
 import {
   calculateAngle,
   checkSquatAngle,
@@ -23,6 +24,7 @@ export default function PoseDetector({ exercise }) {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [angles, setAngles] = useState({});
   const [landmarks, setLandmarks] = useState([]);
+  const previousLandmarks = useRef(null);
 
   useEffect(() => {
     let running = true;
@@ -81,12 +83,15 @@ export default function PoseDetector({ exercise }) {
                 }
               );
 
-              const shoulder = landmarks[11]; // Left shoulder
-              const elbow = landmarks[13]; // Left elbow
-              const wrist = landmarks[15]; // Left wrist
-              const hip = landmarks[23]; // Left hip
-              const knee = landmarks[25]; // Left knee
-              const ankle = landmarks[27]; // Left ankle
+              const shoulder = landmarks[11];
+              const elbow = landmarks[13];
+              const wrist = landmarks[15];
+              const hip = landmarks[23];
+              const knee = landmarks[25];
+              const ankle = landmarks[27];
+
+
+
 
               if (exercise === "pushup") {
                 const elbowAngle = calculateAngle(shoulder, elbow, wrist);
@@ -113,7 +118,20 @@ export default function PoseDetector({ exercise }) {
                 });
 
                 const feedback = checkSquatAngle(squatAngle);
-                setFeedbackMessage(feedback);
+
+                const curr = extractLandmarks(landmarks);
+                if (previousLandmarks.current) {
+                  const phase = detectSquatPhases(previousLandmarks.current, curr);
+                  //setFeedbackMessage(phase || feedback);
+                  setFeedbackMessage(
+                    `${feedback}          ${phase}`
+                  );
+
+                } else {
+                  setFeedbackMessage(feedback);
+                }
+
+                previousLandmarks.current = curr;
               }
             }
           }
@@ -150,7 +168,6 @@ export default function PoseDetector({ exercise }) {
         height={480}
       />
 
-      {/* Push-up angle values */}
       {exercise === "pushup" && angles.elbowAngle && (
         <div
           style={{
@@ -214,7 +231,6 @@ export default function PoseDetector({ exercise }) {
         </div>
       )}
 
-      {/* Squat angle value */}
       {exercise === "squat" && angles.squatAngle && (
         <div
           style={{
@@ -232,7 +248,7 @@ export default function PoseDetector({ exercise }) {
             borderRadius: "5px"
           }}
         >
-          {`Left Knee Angle: ${angles.squatAngle.toFixed(2)}°`}
+          {`Knee Angle: ${angles.squatAngle.toFixed(2)}°`}
         </div>
       )}
 

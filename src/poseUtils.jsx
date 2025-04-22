@@ -9,13 +9,20 @@ export const calculateAngle = (A, B, C) => {
   const magCB = Math.hypot(CB[0], CB[1]);
 
   const angle = Math.acos(dot / (magAB * magCB));
+
+  //console.log((angle * 180) / Math.PI);
+
   return (angle * 180) / Math.PI;
 };
 
 export const checkSquatAngle = (angle) => {
-  if (angle < 80) return "Go deeper!";
-  if (angle > 140) return "Too shallow!";
-  return "Squat looks good!";
+  if (angle < 80) {
+    return "Try squatting lower!\n".padEnd(25, ' ');
+  }
+  if (angle > 140) {
+    return "Try going down more!\n".padEnd(25, ' ');
+  }
+  return "Nice squat position!\n".padEnd(25, ' ');
 };
 
 export const checkPushupAngle = (angle) => {
